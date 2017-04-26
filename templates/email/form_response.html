@@ -1,0 +1,18 @@
+{% extends "email/base.html" %}
+
+{% block main %}
+{% if message %}<p>{{ message }}</p>{% endif %}
+
+{% if request.download_url %}
+<p>You can access your downloads at <a href={{ request.download_url }}>this link</a>.
+{% endif %}
+
+<table border="0">
+{% for field, value in fields %}
+<tr>
+    <td><b>{{ field }}:</b></td>
+    <td>{{ value|linebreaks }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
