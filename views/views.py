@@ -43,7 +43,6 @@ def _authenticate(func):
 
 @_authenticate
 def index(request):
-    print(request,'>>>>>>>>>>>>>>>>>>>>>>>##########')
     acquisition_pages = set([
         acq.page for acq in
         Acquisition.objects.filter(

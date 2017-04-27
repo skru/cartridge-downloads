@@ -26,19 +26,19 @@ class Download(models.Model):
 
     def clean(self):
         # On modification, do not allow filename to change.
-        if self.slug and self.slug != self.file.filename:
+        if self.slug and self.slug != self.file.name:
             raise ValidationError(
                 'The filename "{f}" must remain the same.'.format(f=self.slug))
 
     def save(self, *args, **kwargs):
         # On initial save, set slug to filename.
-        self.slug = self.file.filename if not self.slug else self.slug
+        self.slug = self.file.name if not self.slug else self.slug
         super(Download, self).save(*args, **kwargs)
 
     def validate_unique(self, *args, **kwargs):
         # Do not allow duplicate filenames.
         try:
-            download = Download.objects.get(slug=self.file.filename)
+            download = Download.objects.get(slug=self.file.name)
         except Download.DoesNotExist:
             pass
         else:

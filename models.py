@@ -9,12 +9,15 @@ from mezzanine.conf import settings
 from mezzanine.core.fields import FileField
 
 from model_utils.managers import InheritanceManager
+from django.core.files.storage import FileSystemStorage
 
-
+private_media = FileSystemStorage(location=settings.PRIVATE_MEDIA_ROOT,
+                                  base_url=settings.CARTRIDGE_DOWNLOADS_UPLOAD_DIR,
+                                  )
+from django.template.defaultfilters import slugify
+import posixpath
 class Download(models.Model):
-    file = FileField(upload_to='downloads', format=(
-        'Download' if 'Download' in settings.FILEBROWSER_SELECT_FORMATS
-        else ''))
+    file = models.FileField(storage=private_media)
 
     products = models.ManyToManyField('shop.Product', related_name='downloads')
     forms = models.ManyToManyField('forms.Form', related_name='downloads')
@@ -26,19 +29,19 @@ class Download(models.Model):
 
     def clean(self):
         # On modification, do not allow filename to change.
-        if self.slug and self.slug != self.file.filename:
+        if self.slug and self.slug != self.file.name:
             raise ValidationError(
                 'The filename "{f}" must remain the same.'.format(f=self.slug))
 
     def save(self, *args, **kwargs):
-        # On initial save, set slug to filename.
-        self.slug = self.file.filename if not self.slug else self.slug
+        # On initial save, set slug to friendly filename.
+        self.slug = self.file.storage.get_valid_name(self.file.name)
         super(Download, self).save(*args, **kwargs)
 
     def validate_unique(self, *args, **kwargs):
         # Do not allow duplicate filenames.
         try:
-            download = Download.objects.get(slug=self.file.filename)
+            download = Download.objects.get(slug=self.file.name)
         except Download.DoesNotExist:
             pass
         else:
@@ -79,7 +82,7 @@ class Acquisition(models.Model):
     download_count = models.IntegerField(default=0,
                                          editable=False,
                                          verbose_name='Download Count')
-    download_limit = models.IntegerField(default=5,
+    download_limit = models.IntegerField(default=100,
                                          verbose_name='Download Limit')
     transaction = models.ForeignKey(
         Transaction, on_delete=models.PROTECT, null=True)
