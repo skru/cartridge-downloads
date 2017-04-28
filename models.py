@@ -16,8 +16,14 @@ private_media = FileSystemStorage(location=settings.PRIVATE_MEDIA_ROOT,
                                   )
 from django.template.defaultfilters import slugify
 import posixpath
+
+def upload_path_handler(instance, filename):
+    dirs = filename.split('_')
+    return "{}/{}/{}".format(dirs[0], dirs[1], filename)
+
 class Download(models.Model):
-    file = models.FileField(storage=private_media)
+    file = models.FileField(storage=private_media,
+        upload_to=upload_path_handler)
 
     products = models.ManyToManyField('shop.Product', related_name='downloads')
     forms = models.ManyToManyField('forms.Form', related_name='downloads')
