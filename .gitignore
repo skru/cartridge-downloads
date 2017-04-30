@@ -2,3 +2,4 @@ build/
 dist/
 .tox/
 __pycache__/
+/migrations
