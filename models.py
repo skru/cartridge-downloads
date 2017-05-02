@@ -18,29 +18,38 @@ private_media = FileSystemStorage(location=settings.PRIVATE_MEDIA_ROOT,
 from django.template.defaultfilters import slugify
 import posixpath
 
+# def upload_path_handler(instance, filename):
+#     """
+#     Splits the given filename into a dir structure and filename
+#     eg NAME_YEAR_FILENAME = NAME/YEAR/FILENAME in the upload directory.
+#     Camelcase/clean the filename and lowercases the file extension
+#     """
+#     #dirs = filename.split('_', 2)
+#     fname, ext = dirs[2].split('.',-1)
+#     name = ''.join(x for x in fname.title() if not x.isspace()) \
+#         .replace('_', '')[:39] + '.' + ext.lower()
+#     return "{}/{}/{}".format(dirs[0], dirs[1], name)
+
 def upload_path_handler(instance, filename):
     """
     Splits the given filename into a dir structure and filename
     eg NAME_YEAR_FILENAME = NAME/YEAR/FILENAME in the upload directory.
     Camelcase/clean the filename and lowercases the file extension
     """
-    dirs = filename.split('_', 2)
-    fname, ext = dirs[2].split('.',-1)
+    #dirs = filename.split('_', 2)
+    fname, ext = filename.split('.',-1)
     name = ''.join(x for x in fname.title() if not x.isspace()) \
-        .replace('_', '') + '.' + ext.lower()
-    return "{}/{}/{}".format(dirs[0], dirs[1], name)
+        .replace('_', '')[:39] + '.' + ext.lower()
+    return name
 
 class Download(models.Model):
     file = models.FileField(storage=private_media,
         upload_to=upload_path_handler,
         help_text=mark_safe('''
             <br>
-            <h3>FILENAMES MUST ADHERE TO NAMING AND TYPE CONSTRAINTS</h3>
-            All files must begin with a name and year seperated 
-            by underscores followed by the filename <br>
-            eg:  <strong>name_year_filename.xxx</strong> will be saved as 
-            <strong>Filename.xx</strong> in the folders <strong>name/year/</strong><br>
-            Files can only be .pdf or .zip</br>
+            <h3>FILENAMES MUST ADHERE TO NAMING CONSTRAINTS</h3>
+            Please pre-name any files following the example:<br>
+            eg: EventYearFileName.xxx
             <br>
             <span style='color:red;'>
             ALL FILES MUST FOLLOW THIS EXAMPLE
@@ -64,10 +73,7 @@ class Download(models.Model):
 
     def save(self, *args, **kwargs):
         # On initial save, set slug to friendly filename.
-        getname = self.file.storage.get_valid_name(self.file.name)
-        self.slug = getname
-        self.file.name = getname
-
+        self.slug = self.file.name if not self.slug else self.slug
         super(Download, self).save(*args, **kwargs)
 
     def validate_unique(self, *args, **kwargs):
