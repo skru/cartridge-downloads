@@ -9,12 +9,53 @@ from mezzanine.conf import settings
 from mezzanine.core.fields import FileField
 
 from model_utils.managers import InheritanceManager
+from django.utils.safestring import mark_safe
+from django.core.files.storage import FileSystemStorage
 
+private_media = FileSystemStorage(location=settings.PRIVATE_MEDIA_ROOT,
+                                  base_url=settings.CARTRIDGE_DOWNLOADS_UPLOAD_DIR,
+                                  )
+from django.template.defaultfilters import slugify
+import posixpath
+
+# def upload_path_handler(instance, filename):
+#     """
+#     Splits the given filename into a dir structure and filename
+#     eg NAME_YEAR_FILENAME = NAME/YEAR/FILENAME in the upload directory.
+#     Camelcase/clean the filename and lowercases the file extension
+#     """
+#     #dirs = filename.split('_', 2)
+#     fname, ext = dirs[2].split('.',-1)
+#     name = ''.join(x for x in fname.title() if not x.isspace()) \
+#         .replace('_', '')[:39] + '.' + ext.lower()
+#     return "{}/{}/{}".format(dirs[0], dirs[1], name)
+
+def upload_path_handler(instance, filename):
+    """
+    Splits the given filename into a dir structure and filename
+    eg NAME_YEAR_FILENAME = NAME/YEAR/FILENAME in the upload directory.
+    Camelcase/clean the filename and lowercases the file extension
+    """
+    #dirs = filename.split('_', 2)
+    fname, ext = filename.split('.',-1)
+    name = ''.join(x for x in fname.title() if not x.isspace()) \
+        .replace('_', '')[:39] + '.' + ext.lower()
+    return name
 
 class Download(models.Model):
-    file = FileField(upload_to='downloads', format=(
-        'Download' if 'Download' in settings.FILEBROWSER_SELECT_FORMATS
-        else ''))
+    file = models.FileField(storage=private_media,
+        upload_to=upload_path_handler,
+        help_text=mark_safe('''
+            <br>
+            <h3>FILENAMES MUST ADHERE TO NAMING CONSTRAINTS</h3>
+            Please pre-name any files following the example:<br>
+            eg: EventYearFileName.xxx
+            <br>
+            <span style='color:red;'>
+            ALL FILES MUST FOLLOW THIS EXAMPLE
+            </span>
+            ''')
+    )
 
     products = models.ManyToManyField('shop.Product', related_name='downloads')
     forms = models.ManyToManyField('forms.Form', related_name='downloads')
@@ -22,7 +63,7 @@ class Download(models.Model):
     slug = models.SlugField(unique=True, editable=False)
 
     def __str__(self):
-        return self.slug
+        return self.file.name
 
     def clean(self):
         # On modification, do not allow filename to change.
@@ -31,7 +72,7 @@ class Download(models.Model):
                 'The filename "{f}" must remain the same.'.format(f=self.slug))
 
     def save(self, *args, **kwargs):
-        # On initial save, set slug to filename.
+        # On initial save, set slug to friendly filename.
         self.slug = self.file.name if not self.slug else self.slug
         super(Download, self).save(*args, **kwargs)
 
@@ -79,7 +120,7 @@ class Acquisition(models.Model):
     download_count = models.IntegerField(default=0,
                                          editable=False,
                                          verbose_name='Download Count')
-    download_limit = models.IntegerField(default=5,
+    download_limit = models.IntegerField(default=100,
                                          verbose_name='Download Limit')
     transaction = models.ForeignKey(
         Transaction, on_delete=models.PROTECT, null=True)
